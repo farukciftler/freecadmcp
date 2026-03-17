@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "freecad": {
+      "command": "python3",
+      "args": ["-m", "server.main"],
+      "cwd": "/Users/farukciftler/Documents/projects/freecadmcp",
+      "env": {}
+    }
+  }
+}
