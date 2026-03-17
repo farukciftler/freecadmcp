@@ -1,114 +1,71 @@
-import sys
 import os
+import sys
+sys.path.insert(0, os.path.abspath("."))
+from server.freecad_bridge import FreeCADBridge
 
-# freecad_bridge.py'nin bulunduğu dizini sys.path'e ekle
-sys.path.append(os.path.join(os.getcwd(), "server"))
+def build_car():
+    bridge = FreeCADBridge()
+    doc = "CarProject"
+    
+    print("1. Yeni doküman oluşturuluyor...")
+    bridge.create_document(doc)
 
-from freecad_bridge import FreeCADBridge
+    print("2. Gövde ve Kabin oluşturuluyor...")
+    # Şasi: 100mm uzunluk, 40mm genişlik, 20mm yükseklik. Z=10 seviyesine koyalım ki altı boş olsun (tekerlekler için)
+    bridge.create_box(doc, "Chassis", 100, 40, 20)
+    bridge.move_object(doc, "Chassis", 0, 0, 10)
 
-def create_stylized_car():
-    bridge = FreeCADBridge("http://127.0.0.1:36875")
-    doc_name = "CarDesign"
-    
-    print(f"--- Araba Modelleme Başlatılıyor ---")
-    
-    # 1. Doküman oluştur
-    bridge.create_document(doc_name)
-    
-    # 2. Araba Gövdesi ve Tekerleklerini oluşturacak Script
-    car_script = """
-import FreeCAD as App
-import Part
-import math
+    # Kabin: 50mm uzunluk, 36mm genişlik, 15mm yükseklik.
+    bridge.create_box(doc, "Cabin", 50, 36, 15)
+    bridge.move_object(doc, "Cabin", 25, 2, 30) # Şasinin ortasına ve üstüne oturttuk (Y'de 2mm içeride)
 
-doc = App.getDocument('CarDesign')
+    # Şasi ve Kabini birleştir
+    bridge.boolean_union(doc, "CarBody", "Chassis", "Cabin")
 
-def make_car():
-    # --- 1. GÖVDE (Loft ile kavisli tasarım) ---
-    # Alt taban profili
-    p1 = Part.makeBox(120, 60, 2).Shape
-    p1.translate(App.Vector(0,0,0))
+    print("3. Tekerlekler oluşturuluyor ve hizalanıyor...")
+    # Tekerlek boyutları: Yarıçap=12, Kalınlık=5
+    # Silindirler normalde Z ekseninde uzar. Tekerlek olması için X veya Y eksenine yatırmalıyız. (X etrafında 90 derece döndüreceğiz)
     
-    # Orta gövde profili (biraz daha kavisli/dar)
-    p2 = Part.makeBox(110, 55, 2).Shape
-    p2.translate(App.Vector(5,2.5,15))
-    
-    # Üst tavan profili
-    p3 = Part.makeBox(60, 45, 2).Shape
-    p3.translate(App.Vector(30,7.5,30))
-    
-    # Loft ile bu profilleri birleştirerek kavisli bir gövde elde et
-    try:
-        body = Part.makeLoft([Part.Wire(p1.Edges), Part.Wire(p2.Edges), Part.Wire(p3.Edges)], True, False, False)
-        body_obj = doc.addObject("Part::Feature", "CarBody")
-        body_obj.Shape = body
-        body_obj.ViewObject.ShapeColor = (0.8, 0.1, 0.1) # Kırmızı
-    except:
-        # Loft başarısız olursa basit kutu gövde (Güvenlik için)
-        body_obj = doc.addObject("Part::Box", "CarBodySimple")
-        body_obj.Length = 120
-        body_obj.Width = 60
-        body_obj.Height = 25
-        body = body_obj.Shape
-
-    # --- 2. TEKERLEK YUVALARI (Kesme işlemi) ---
     wheel_radius = 12
-    wheel_width = 15
+    wheel_width = 5
     
-    # Tekerlek koordinatları [x, y]
-    wheel_positions = [
-        (25, -5),   # Sol ön
-        (25, 50),   # Sağ ön
-        (95, -5),   # Sol arka
-        (95, 50)    # Sağ arka
-    ]
-    
-    final_body = body
-    wheels = []
-    
-    for i, (x, y) in enumerate(wheel_positions):
-        # Tekerlek silindiri
-        wheel = Part.makeCylinder(wheel_radius, wheel_width, App.Vector(x, y, 0), App.Vector(0, 1, 0))
-        
-        # Tekerlek objesi olarak ekle
-        w_obj = doc.addObject("Part::Feature", f"Wheel_{i}")
-        w_obj.Shape = wheel
-        w_obj.ViewObject.ShapeColor = (0.1, 0.1, 0.1) # Siyah
-        
-        # Gövdeden tekerlek yuvasını çıkar (Cut)
-        # Biraz daha büyük bir silindirle boşluk açalım
-        cutter = Part.makeCylinder(wheel_radius + 2, wheel_width + 10, App.Vector(x, y-5, 0), App.Vector(0, 1, 0))
-        final_body = final_body.cut(cutter)
-    
-    # Güncellenmiş gövdeyi ata
-    body_obj.Shape = final_body
-    
-    # --- 3. CAMLAR / DETAYLAR ---
-    # Ön cam alanı (Basit bir eğik kutu)
-    windshield = Part.makeBox(30, 40, 15)
-    windshield.translate(App.Vector(25, 10, 18))
-    # Windshield'ı gövdeye kaynatalım veya ayrı obje yapalım
-    ws_obj = doc.addObject("Part::Feature", "Windshield")
-    ws_obj.Shape = windshield
-    ws_obj.ViewObject.ShapeColor = (0.5, 0.8, 1.0, 0.5) # Şeffaf Mavi
-    ws_obj.ViewObject.Transparency = 50
+    # Tekerlek 1 (Ön Sol)
+    bridge.create_cylinder(doc, "W1", wheel_radius, wheel_width)
+    bridge.rotate_object(doc, "W1", 1, 0, 0, 90) # X ekseninde 90 derece yatır
+    bridge.move_object(doc, "W1", 20, 0, 12) # Y=0 (Sol), Z=12 (Yere değecek şekil)
 
-    doc.recompute()
-    return "CarComplete"
+    # Tekerlek 2 (Ön Sağ)
+    bridge.create_cylinder(doc, "W2", wheel_radius, wheel_width)
+    bridge.rotate_object(doc, "W2", 1, 0, 0, 90)
+    bridge.move_object(doc, "W2", 20, 45, 12) # Y=45 (Sağ)
 
-_result = make_car()
-"""
-    
-    print("Stylized Araba modeli (Loft/Cut/Merge) oluşturuluyor...")
-    res = bridge.execute_code(car_script)
-    
-    if res.get("ok"):
-        print(f"✅ Araba başarıyla oluşturuldu: {res.get('result')}")
-    else:
-        print(f"❌ Hata: {res.get('error')}")
-        print(f"Stderr: {res.get('stderr')}")
+    # Tekerlek 3 (Arka Sol)
+    bridge.create_cylinder(doc, "W3", wheel_radius, wheel_width)
+    bridge.rotate_object(doc, "W3", 1, 0, 0, 90)
+    bridge.move_object(doc, "W3", 80, 0, 12)
 
-    print("\n--- Model Tamamlandı. Lütfen FreeCAD ekranını 3D olarak döndürerek inceleyin! ---")
+    # Tekerlek 4 (Arka Sağ)
+    bridge.create_cylinder(doc, "W4", wheel_radius, wheel_width)
+    bridge.rotate_object(doc, "W4", 1, 0, 0, 90)
+    bridge.move_object(doc, "W4", 80, 45, 12)
+
+    print("4. Tüm parçalar tek bir modelde birleştiriliyor...")
+    # Iteratif birleştirme (FreeCAD MultiFuse desteklese de köprümüz 2'li birleştirme alıyor)
+    bridge.boolean_union(doc, "U1", "CarBody", "W1")
+    bridge.boolean_union(doc, "U2", "U1", "W2")
+    bridge.boolean_union(doc, "U3", "U2", "W3")
+    bridge.boolean_union(doc, "FinalCar", "U3", "W4")
+
+    print("5. 3D Baskı için STL formatında dışa aktarılıyor...")
+    stl_path = os.path.abspath("toy_car_3d_print.stl")
+    bridge.export_document(doc, stl_path)
+    print(f"Başarıyla Kaydedildi: {stl_path}")
+    
+    # İşimiz bitti, dokümanı hafızadan silebiliriz
+    bridge.close_document(doc)
 
 if __name__ == "__main__":
-    create_stylized_car()
+    try:
+        build_car()
+    except Exception as e:
+        print(f"Hata oluştu: {e}")

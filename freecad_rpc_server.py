@@ -38,19 +38,19 @@ except Exception:
 QtCore = None
 try:
     from PySide2 import QtCore
-    FreeCAD.Console.PrintMessage("✅ PySide2 bulundu.\n")
+    FreeCAD.Console.PrintMessage("✅ PySide2 bulundu.\\n")
 except Exception as e2:
     try:
         from PySide6 import QtCore
-        FreeCAD.Console.PrintMessage("✅ PySide6 bulundu.\n")
+        FreeCAD.Console.PrintMessage("✅ PySide6 bulundu.\\n")
     except Exception as e6:
         try:
             from PySide import QtCore
-            FreeCAD.Console.PrintMessage("✅ PySide bulundu.\n")
+            FreeCAD.Console.PrintMessage("✅ PySide bulundu.\\n")
         except Exception as e1:
-            FreeCAD.Console.PrintError(f"❌ Tüm Qt bağlamaları (PySide2/6/1) başarısız oldu!\n")
-            FreeCAD.Console.PrintError(f"   (PySide2 hatası: {str(e2)})\n")
-            FreeCAD.Console.PrintMessage(f"   sys.path: {sys.path[:3]}...\n")
+            FreeCAD.Console.PrintError(f"❌ Tüm Qt bağlamaları (PySide2/6/1) başarısız oldu!\\n")
+            FreeCAD.Console.PrintError(f"   (PySide2 hatası: {str(e2)})\\n")
+            FreeCAD.Console.PrintMessage(f"   sys.path: {sys.path[:3]}\\n")
             QtCore = None
 
 HOST = "127.0.0.1"
@@ -76,33 +76,28 @@ _request_queue = queue.Queue()
 def _process_queue():
     """Ana iş parçacığında (Main Thread) çalışan poller."""
     try:
-        # Debug: Her çağrıldığında konsola nokta bas (Çok sık olursa kaldırırız)
-        # FreeCAD.Console.PrintMessage(".") 
-        
         while not _request_queue.empty():
             req = _request_queue.get_nowait()
-            FreeCAD.Console.PrintMessage(f"RPC İşleniyor: {req.method_name}\n")
+            FreeCAD.Console.PrintMessage(f"RPC İşleniyor: {req.method_name}\\n")
             try:
                 method = getattr(_service_instance, req.method_name)
                 req.result = method(*req.args, **req.kwargs)
-                FreeCAD.Console.PrintMessage(f"RPC Tamamlandı: {req.method_name}\n")
+                FreeCAD.Console.PrintMessage(f"RPC Tamamlandı: {req.method_name}\\n")
             except Exception as e:
                 req.error = str(e)
-                FreeCAD.Console.PrintError(f"RPC Hata [{req.method_name}]: {traceback.format_exc()}\n")
+                FreeCAD.Console.PrintError(f"RPC Hata [{req.method_name}]: {traceback.format_exc()}\\n")
             finally:
                 req.completed.set()
     except queue.Empty:
         pass
     except Exception as e:
-        FreeCAD.Console.PrintError(f"Timer Hata: {str(e)}\n")
+        FreeCAD.Console.PrintError(f"Timer Hata: {str(e)}\\n")
 
 # Tanı: GUI durumu
-FreeCAD.Console.PrintMessage(f"Tanı: HAS_GUI={HAS_GUI}, QtCore={'Mevcut' if QtCore else 'Yok'}\n")
+FreeCAD.Console.PrintMessage(f"Tanı: HAS_GUI={HAS_GUI}, QtCore={'Mevcut' if QtCore else 'Yok'}\\n")
 
 # QTimer ile kuyruğu dinle
 if QtCore:
-    # QTimer için bir uygulama örneği (Application instance) gerekir.
-    # FreeCAD GUI modunda bu zaten vardır.
     try:
         from PySide2 import QtWidgets
         app = QtWidgets.QApplication.instance()
@@ -116,9 +111,9 @@ if QtCore:
     _timer.timeout.connect(_process_queue)
     _timer.setTimerType(QtCore.Qt.PreciseTimer)
     _timer.start(50) 
-    FreeCAD.Console.PrintMessage("✅ QTimer poller (Thread-Safe) başlatıldı.\n")
+    FreeCAD.Console.PrintMessage("✅ QTimer poller (Thread-Safe) başlatıldı.\\n")
 else:
-    FreeCAD.Console.PrintError("❌ QtCore bulunamadı, poller başlatılamıyor!\n")
+    FreeCAD.Console.PrintError("❌ QtCore bulunamadı, poller başlatılamıyor!\\n")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Yardımcı fonksiyonlar
@@ -127,17 +122,14 @@ else:
 def _ok(**kwargs) -> str:
     return json.dumps({"ok": True, **kwargs})
 
-
 def _err(msg: str) -> str:
     return json.dumps({"ok": False, "error": msg})
-
 
 def _get_doc(name: str) -> FreeCAD.Document:
     doc = FreeCAD.getDocument(name)
     if doc is None:
         raise ValueError(f"No document named '{name}'")
     return doc
-
 
 def _shape_info(shape) -> dict:
     try:
@@ -161,14 +153,11 @@ def _shape_info(shape) -> dict:
     except Exception:
         return {}
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # RPC Metotları (Gerçek Mantık)
 # ──────────────────────────────────────────────────────────────────────────────
 
 class FreeCADServiceImpl:
-    """Bu sınıf metotları DOĞRUDAN çağrılmaz, kuyruk üzerinden dispatcher ile çalışır."""
-
     def ping(self) -> str:
         return "pong"
 
@@ -176,31 +165,27 @@ class FreeCADServiceImpl:
         try:
             doc = FreeCAD.newDocument(name)
             return _ok(doc_name=doc.Name)
-        except Exception as e:
-            return _err(str(e))
+        except Exception as e: return _err(str(e))
 
     def save_document(self, name: str, path: str) -> str:
         try:
             doc = _get_doc(name)
             doc.saveAs(path)
             return _ok(path=path)
-        except Exception as e:
-            return _err(str(e))
+        except Exception as e: return _err(str(e))
 
     def close_document(self, name: str) -> str:
         try:
             doc = _get_doc(name)
             FreeCAD.closeDocument(doc.Name)
             return _ok(closed=name)
-        except Exception as e:
-            return _err(str(e))
+        except Exception as e: return _err(str(e))
 
     def list_documents(self) -> str:
         try:
             docs = [d.Name for d in FreeCAD.listDocuments().values()]
             return _ok(documents=docs)
-        except Exception as e:
-            return _err(str(e))
+        except Exception as e: return _err(str(e))
 
     def create_box(self, doc: str, name: str, length: float, width: float, height: float) -> str:
         try:
@@ -211,8 +196,7 @@ class FreeCADServiceImpl:
             obj.Height = height
             d.recompute()
             return _ok(object=name, shape=_shape_info(obj.Shape))
-        except Exception as e:
-            return _err(str(e))
+        except Exception as e: return _err(str(e))
 
     def create_cylinder(self, doc: str, name: str, radius: float, height: float) -> str:
         try:
@@ -222,8 +206,197 @@ class FreeCADServiceImpl:
             obj.Height = height
             d.recompute()
             return _ok(object=name, shape=_shape_info(obj.Shape))
-        except Exception as e:
-            return _err(str(e))
+        except Exception as e: return _err(str(e))
+
+    def create_sphere(self, doc: str, name: str, radius: float) -> str:
+        try:
+            d = _get_doc(doc)
+            obj = d.addObject("Part::Sphere", name)
+            obj.Radius = radius
+            d.recompute()
+            return _ok(object=name, shape=_shape_info(obj.Shape))
+        except Exception as e: return _err(str(e))
+
+    def create_cone(self, doc: str, name: str, radius1: float, radius2: float, height: float) -> str:
+        try:
+            d = _get_doc(doc)
+            obj = d.addObject("Part::Cone", name)
+            obj.Radius1 = radius1
+            obj.Radius2 = radius2
+            obj.Height = height
+            d.recompute()
+            return _ok(object=name, shape=_shape_info(obj.Shape))
+        except Exception as e: return _err(str(e))
+
+    def boolean_union(self, doc: str, name: str, base: str, tool: str) -> str:
+        try:
+            d = _get_doc(doc)
+            b_obj = d.getObject(base)
+            t_obj = d.getObject(tool)
+            obj = d.addObject("Part::MultiFuse", name)
+            obj.Shapes = [b_obj, t_obj]
+            d.recompute()
+            return _ok(object=name)
+        except Exception as e: return _err(str(e))
+
+    def boolean_cut(self, doc: str, name: str, base: str, tool: str) -> str:
+        try:
+            d = _get_doc(doc)
+            b_obj = d.getObject(base)
+            t_obj = d.getObject(tool)
+            obj = d.addObject("Part::Cut", name)
+            obj.Base = b_obj
+            obj.Tool = t_obj
+            d.recompute()
+            return _ok(object=name)
+        except Exception as e: return _err(str(e))
+
+    def boolean_common(self, doc: str, name: str, base: str, tool: str) -> str:
+        try:
+            d = _get_doc(doc)
+            b_obj = d.getObject(base)
+            t_obj = d.getObject(tool)
+            obj = d.addObject("Part::MultiCommon", name)
+            obj.Shapes = [b_obj, t_obj]
+            d.recompute()
+            return _ok(object=name)
+        except Exception as e: return _err(str(e))
+
+    def create_body(self, doc: str, name: str) -> str:
+        try:
+            if not HAS_PART_DESIGN: return _err("PartDesign module not loaded.")
+            d = _get_doc(doc)
+            obj = d.addObject('PartDesign::Body', name)
+            d.recompute()
+            return _ok(object=name)
+        except Exception as e: return _err(str(e))
+
+    def create_sketch(self, doc: str, body: str, name: str, plane: str) -> str:
+        try:
+            d = _get_doc(doc)
+            b_obj = d.getObject(body)
+            obj = d.addObject('Sketcher::SketchObject', name)
+            
+            if plane == "XY":
+                obj.Placement = FreeCAD.Placement(FreeCAD.Vector(0,0,0), FreeCAD.Rotation(0,0,0,1))
+            elif plane == "XZ":
+                obj.Placement = FreeCAD.Placement(FreeCAD.Vector(0,0,0), FreeCAD.Rotation(FreeCAD.Vector(1,0,0),90))
+            elif plane == "YZ":
+                obj.Placement = FreeCAD.Placement(FreeCAD.Vector(0,0,0), FreeCAD.Rotation(FreeCAD.Vector(0,1,0),90))
+            
+            b_obj.addObject(obj)
+            d.recompute()
+            return _ok(object=name)
+        except Exception as e: return _err(str(e))
+
+    def add_rectangle_to_sketch(self, doc: str, sketch: str, x: float, y: float, w: float, h: float) -> str:
+        try:
+            d = _get_doc(doc)
+            s_obj = d.getObject(sketch)
+            p1 = FreeCAD.Vector(x, y, 0)
+            p2 = FreeCAD.Vector(x+w, y, 0)
+            p3 = FreeCAD.Vector(x+w, y+h, 0)
+            p4 = FreeCAD.Vector(x, y+h, 0)
+            s_obj.addGeometry(Part.LineSegment(p1, p2), False)
+            s_obj.addGeometry(Part.LineSegment(p2, p3), False)
+            s_obj.addGeometry(Part.LineSegment(p3, p4), False)
+            s_obj.addGeometry(Part.LineSegment(p4, p1), False)
+            d.recompute()
+            return _ok(object=sketch)
+        except Exception as e: return _err(str(e))
+
+    def add_circle_to_sketch(self, doc: str, sketch: str, cx: float, cy: float, r: float) -> str:
+        try:
+            d = _get_doc(doc)
+            s_obj = d.getObject(sketch)
+            circle = Part.Circle(FreeCAD.Vector(cx, cy, 0), FreeCAD.Vector(0,0,1), r)
+            s_obj.addGeometry(circle, False)
+            d.recompute()
+            return _ok(object=sketch)
+        except Exception as e: return _err(str(e))
+
+    def pad(self, doc: str, body: str, sketch: str, length: float, name: str) -> str:
+        try:
+            d = _get_doc(doc)
+            b_obj = d.getObject(body)
+            s_obj = d.getObject(sketch)
+            pad_name = name if name else "Pad"
+            obj = d.addObject('PartDesign::Pad', pad_name)
+            obj.Profile = s_obj
+            obj.Length = length
+            b_obj.addObject(obj)
+            d.recompute()
+            return _ok(object=obj.Name)
+        except Exception as e: return _err(str(e))
+
+    def pocket(self, doc: str, body: str, sketch: str, depth: float, name: str) -> str:
+        try:
+            d = _get_doc(doc)
+            b_obj = d.getObject(body)
+            s_obj = d.getObject(sketch)
+            pocket_name = name if name else "Pocket"
+            obj = d.addObject('PartDesign::Pocket', pocket_name)
+            obj.Profile = s_obj
+            obj.Length = depth
+            b_obj.addObject(obj)
+            d.recompute()
+            return _ok(object=obj.Name)
+        except Exception as e: return _err(str(e))
+
+    def fillet(self, doc: str, body: str, feature: str, edges: list, radius: float) -> str:
+        try:
+            d = _get_doc(doc)
+            b_obj = d.getObject(body)
+            f_obj = d.getObject(feature)
+            obj = d.addObject("PartDesign::Fillet", "Fillet")
+            obj.Base = (f_obj, [f"Edge{i+1}" for i in edges])
+            obj.Radius = radius
+            b_obj.addObject(obj)
+            d.recompute()
+            return _ok(object=obj.Name)
+        except Exception as e: return _err(str(e))
+
+    def chamfer(self, doc: str, body: str, feature: str, edges: list, size: float) -> str:
+        try:
+            d = _get_doc(doc)
+            b_obj = d.getObject(body)
+            f_obj = d.getObject(feature)
+            obj = d.addObject("PartDesign::Chamfer", "Chamfer")
+            obj.Base = (f_obj, [f"Edge{i+1}" for i in edges])
+            obj.Size = size
+            b_obj.addObject(obj)
+            d.recompute()
+            return _ok(object=obj.Name)
+        except Exception as e: return _err(str(e))
+
+    def move_object(self, doc: str, obj: str, x: float, y: float, z: float) -> str:
+        try:
+            d = _get_doc(doc)
+            o = d.getObject(obj)
+            o.Placement.Base = FreeCAD.Vector(x, y, z)
+            d.recompute()
+            return _ok(object=obj)
+        except Exception as e: return _err(str(e))
+
+    def rotate_object(self, doc: str, obj: str, ax: float, ay: float, az: float, angle: float) -> str:
+        try:
+            d = _get_doc(doc)
+            o = d.getObject(obj)
+            rot = FreeCAD.Rotation(FreeCAD.Vector(ax, ay, az), angle)
+            o.Placement.Rotation = rot.multiply(o.Placement.Rotation)
+            d.recompute()
+            return _ok(object=obj)
+        except Exception as e: return _err(str(e))
+
+    def set_property(self, doc: str, obj: str, prop: str, value: str) -> str:
+        try:
+            d = _get_doc(doc)
+            o = d.getObject(obj)
+            val = json.loads(value)
+            setattr(o, prop, val)
+            d.recompute()
+            return _ok(object=obj, property=prop)
+        except Exception as e: return _err(str(e))
 
     def get_system_info(self) -> str:
         try:
@@ -235,8 +408,7 @@ class FreeCADServiceImpl:
                 "has_part_design": HAS_PART_DESIGN,
             }
             return _ok(**info)
-        except Exception as e:
-            return _err(str(e))
+        except Exception as e: return _err(str(e))
 
     def get_object_tree(self, doc: str) -> str:
         try:
@@ -252,9 +424,74 @@ class FreeCADServiceImpl:
                     entry["shape"] = _shape_info(obj.Shape)
                 tree.append(entry)
             return _ok(doc=doc, objects=tree, count=len(tree))
-        except Exception as e:
-            return _err(str(e))
+        except Exception as e: return _err(str(e))
+
+    def get_object_info(self, doc: str, obj: str) -> str:
+        try:
+            d = _get_doc(doc)
+            o = d.getObject(obj)
+            if not o: return _err("Object not found")
+            info = {"name": o.Name, "type": o.TypeId}
+            if hasattr(o, "Shape") and o.Shape:
+                info["shape"] = _shape_info(o.Shape)
+            return _ok(info=info)
+        except Exception as e: return _err(str(e))
+
+    def get_view_screenshot(self, doc: str) -> str:
+        try:
+            if not HAS_GUI: return _err("FreeCAD GUI is not running.")
+            import FreeCADGui
+            gui_doc = FreeCADGui.getDocument(doc)
+            if not gui_doc: return _err("GUI Document not found")
+            view = gui_doc.ActiveView
+            if not view: return _err("Active view not found")
             
+            tmp_path = os.path.join(tempfile.gettempdir(), f"mcp_screenshot_{doc}.png")
+            view.saveImage(tmp_path, 800, 600, "Transparent")
+            with open(tmp_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode('utf-8')
+            os.remove(tmp_path)
+            return _ok(image_base64=b64)
+        except Exception as e: return _err(str(e))
+
+    def export_document(self, doc: str, filename: str) -> str:
+        try:
+            d = _get_doc(doc)
+            objs = d.Objects
+            if not objs: return _err("Document is empty")
+            
+            ext = filename.lower().split('.')[-1]
+            if ext == 'stl':
+                import Mesh
+                Mesh.export(objs, filename)
+            elif ext in ['step', 'stp']:
+                import Import
+                Import.export(objs, filename)
+            else:
+                return _err(f"Unsupported export format: {ext}")
+            return _ok(path=filename)
+        except Exception as e: return _err(str(e))
+
+    def set_camera_view(self, doc: str, view_type: str) -> str:
+        try:
+            if not HAS_GUI: return _err("FreeCAD GUI is not running.")
+            import FreeCADGui
+            gui_doc = FreeCADGui.getDocument(doc)
+            if not gui_doc: return _err("GUI Document not found")
+            view = gui_doc.ActiveView
+            if not view: return _err("Active view not found")
+            
+            vt = view_type.lower()
+            if vt == "isometric": view.viewAxometric()
+            elif vt == "front": view.viewFront()
+            elif vt == "top": view.viewTop()
+            elif vt == "fit": view.fitAll()
+            else: return _err(f"Unknown view type: {vt}")
+                
+            view.fitAll()
+            return _ok(view=vt)
+        except Exception as e: return _err(str(e))
+
     def execute_code(self, code: str) -> str:
         import io
         stdout_buf = io.StringIO()
@@ -282,24 +519,15 @@ class FreeCADServiceImpl:
             "result": str(result_val) if result_val is not None else None,
         })
 
-# Global örnek
 _service_instance = FreeCADServiceImpl()
 
 class ThreadSafeFreeCADProxy:
-    """XML-RPC sunucusunun doğrudan çağırdığı sınıf. İstekleri kuyruğa yönlendirir."""
-    
     def _dispatch(self, method, params):
-        """Tüm XML-RPC çağrılarını yakalar ve ana iş parçacığına paslar."""
         req = RPCRequest(method, params, {})
         _request_queue.put(req)
-        
-        # Ana iş parçacığının bitirmesini bekle (Zaman aşımı eklenebilir)
         finished = req.completed.wait(timeout=10.0)
-        
-        if not finished:
-            return _err("Request timed out (Main thread busy?)")
-        if req.error:
-            return _err(req.error)
+        if not finished: return _err("Request timed out (Main thread busy?)")
+        if req.error: return _err(req.error)
         return req.result
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -315,7 +543,7 @@ _server: SimpleXMLRPCServer | None = None
 def start_server():
     global _server
     if _server is not None:
-        FreeCAD.Console.PrintMessage("RPC sunucusu zaten çalışıyor.\n")
+        FreeCAD.Console.PrintMessage("RPC sunucusu zaten çalışıyor.\\n")
         return
 
     _server = SimpleXMLRPCServer(
@@ -324,14 +552,12 @@ def start_server():
         allow_none=True,
         logRequests=False,
     )
-    
-    # Tüm metodları Dispatcher üzerinden geçir
     _server.register_instance(ThreadSafeFreeCADProxy())
     _server.register_introspection_functions()
 
     thread = threading.Thread(target=_server.serve_forever, daemon=True)
     thread.start()
-    FreeCAD.Console.PrintMessage(f"✅ Safe RPC sunucusu başladı → {HOST}:{PORT}\n")
+    FreeCAD.Console.PrintMessage(f"✅ Safe RPC sunucusu başladı → {HOST}:{PORT}\\n")
 
 def stop_server():
     global _server, _timer
@@ -341,7 +567,7 @@ def stop_server():
     if _timer:
         _timer.stop()
         _timer = None
-    FreeCAD.Console.PrintMessage("🛑 Safe RPC sunucusu durduruldu.\n")
+    FreeCAD.Console.PrintMessage("🛑 Safe RPC sunucusu durduruldu.\\n")
 
 if __name__ == "__main__":
     start_server()

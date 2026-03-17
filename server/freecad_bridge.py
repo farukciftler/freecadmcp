@@ -145,8 +145,20 @@ class FreeCADBridge:
 
     def get_view_screenshot(self, doc: str) -> str:
         """Base64 PNG döner."""
-        raw = self._call("get_view_screenshot", doc)
-        return raw  # zaten base64 string
+        res = json.loads(self._call("get_view_screenshot", doc))
+        if not res.get("ok"):
+            raise RuntimeError(res.get("error", "Unknown screenshot error"))
+        return res["image_base64"]
+
+    # ------------------------------------------------------------------ #
+    # Yeni Özellikler (Dışa Aktarma, Kamera)
+    # ------------------------------------------------------------------ #
+
+    def export_document(self, doc: str, filename: str) -> dict:
+        return json.loads(self._call("export_document", doc, filename))
+
+    def set_camera_view(self, doc: str, view_type: str) -> dict:
+        return json.loads(self._call("set_camera_view", doc, view_type))
 
     # ------------------------------------------------------------------ #
     # Serbest kod yürütme

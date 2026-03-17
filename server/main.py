@@ -351,6 +351,14 @@ def get_view_screenshot(doc_name: str) -> dict:
     except Exception as exc:
         return {"ok": False, "error": enrich_error(str(exc))}
 
+@mcp.tool(description="Kamera açısını ayarlar (isometric, top, front, fit). Ekran görüntüsü öncesi faydalıdır.")
+def set_camera_view(doc_name: str, view_type: str = "isometric") -> dict:
+    return _safe_call(bridge.set_camera_view, doc_name, view_type)
+
+@mcp.tool(description="Belgeyi veya nesneleri STL, STEP formatında dışa aktarır.")
+def export_document(doc_name: str, file_path: str) -> dict:
+    return _safe_call(bridge.export_document, doc_name, file_path)
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ARAÇLAR — Bağlantı Testi
