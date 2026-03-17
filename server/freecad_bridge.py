@@ -49,6 +49,9 @@ class FreeCADBridge:
     def create_document(self, name: str = "Unnamed") -> dict:
         return json.loads(self._call("create_document", name))
 
+    def open_document(self, filepath: str) -> dict:
+        return json.loads(self._call("open_document", filepath))
+
     def save_document(self, name: str, path: str) -> dict:
         return json.loads(self._call("save_document", name, path))
 
@@ -166,6 +169,28 @@ class FreeCADBridge:
 
     def execute_code(self, code: str) -> dict:
         return json.loads(self._call("execute_code", code))
+
+    # ------------------------------------------------------------------ #
+    # Yeni Profesyonel Araçlar (Topoloji, Kısıtlamalar, TechDraw vb.)
+    # ------------------------------------------------------------------ #
+
+    def get_topology_info(self, doc: str, obj: str) -> dict:
+        return json.loads(self._call("get_topology_info", doc, obj))
+
+    def add_sketch_constraint(self, doc: str, sketch: str, constraint_type: str, geo1: int, pos1: int, geo2: int=-1, pos2: int=-1, value: float=0.0) -> dict:
+        return json.loads(self._call("add_sketch_constraint", doc, sketch, constraint_type, geo1, pos1, geo2, pos2, value))
+
+    def undo(self, doc: str) -> dict:
+        return json.loads(self._call("undo", doc))
+
+    def redo(self, doc: str) -> dict:
+        return json.loads(self._call("redo", doc))
+
+    def get_physical_properties(self, doc: str, obj: str) -> dict:
+        return json.loads(self._call("get_physical_properties", doc, obj))
+
+    def export_techdraw(self, doc: str, obj: str, filepath: str) -> dict:
+        return json.loads(self._call("export_techdraw", doc, obj, filepath))
 
     # ------------------------------------------------------------------ #
     # Yardımcılar

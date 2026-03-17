@@ -1,1 +1,5 @@
 *.pyc
+*.FCStd
+*.step
+*.FCBak
+generate_techdraw_car.py

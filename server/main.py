@@ -24,7 +24,12 @@ mcp = FastMCP(
         "Sen bir FreeCAD CAD asistanısın. "
         "Kullanıcının 3D geometri oluşturmasına, manipüle etmesine ve kaydetmesine yardımcı olursun. "
         "Her işlemden sonra 'get_object_tree' ile sonucu doğrula. "
-        "Hata alırsan 'self-correction' döngüsüyle düzelt."
+        "Hata alırsan 'self-correction' döngüsüyle düzelt. "
+        "ÖNEMLİ KURAL: Kullanıcı 'önizleme', 'ekran görüntüsü' veya 'görsel' istediğinde KESİNLİKLE "
+        "matplotlib, trimesh, pyvista gibi harici Python kütüphanelerini kullanarak özel çizim (plot) kodu YAZMA. "
+        "Bunun yerine DAİMA önce 'set_camera_view' (örn: isometric) aracını kullan, ardından 'get_view_screenshot' "
+        "aracını çağırarak FreeCAD'in kendi yüksek kaliteli ekran görüntüsünü kullanıcıya sun."
+        "modellerde ve önizlemede mm kullan. türkçe karakter kullanmaktan çekinme."
     ),
 )
 
@@ -58,6 +63,15 @@ def create_document(name: str = "Unnamed") -> dict:
         ok, doc_name
     """
     return _safe_call(bridge.create_document, name)
+
+
+@mcp.tool(description="Diskteki mevcut bir FreeCAD (.FCStd) dosyasını veya desteklenen formattaki bir objeyi açar.")
+def open_document(file_path: str) -> dict:
+    """
+    Parametreler:
+        file_path: Açılacak dosyanın tam yolu.
+    """
+    return _safe_call(bridge.open_document, file_path)
 
 
 @mcp.tool(description="Belgeyi diske kaydeder.")
@@ -358,6 +372,37 @@ def set_camera_view(doc_name: str, view_type: str = "isometric") -> dict:
 @mcp.tool(description="Belgeyi veya nesneleri STL, STEP formatında dışa aktarır.")
 def export_document(doc_name: str, file_path: str) -> dict:
     return _safe_call(bridge.export_document, doc_name, file_path)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# YENİ EKLENEN PROFESYONEL ARAÇLAR
+# ──────────────────────────────────────────────────────────────────────────────
+
+@mcp.tool(description="Pah (Fillet/Chamfer) kırmak veya analiz için nesnenin tüm kenar ve yüzey topolojisini (Uzunluk, Alan ve Merkez Koordinatları) getirir.")
+def get_topology_info(doc_name: str, object_name: str) -> dict:
+    return _safe_call(bridge.get_topology_info, doc_name, object_name)
+
+@mcp.tool(description="Sketch'e geometrik kısıtlama ekler ('Distance', 'Radius', 'Coincident', 'Parallel', 'Horizontal', vb). pos1/pos2 parametreleri 1=Start, 2=End, 3=Center, 0=Edge'i ifade eder.")
+def add_sketch_constraint(
+    doc_name: str, sketch_name: str, constraint_type: str, geo1: int, pos1: int, geo2: int = -1, pos2: int = -1, value: float = 0.0
+) -> dict:
+    return _safe_call(bridge.add_sketch_constraint, doc_name, sketch_name, constraint_type, geo1, pos1, geo2, pos2, value)
+
+@mcp.tool(description="Dokümandaki son işlemi geri alır (Undo). Hata yaptığınızda dokümanı baştan çizmek yerine bunu kullanın.")
+def undo(doc_name: str) -> dict:
+    return _safe_call(bridge.undo, doc_name)
+
+@mcp.tool(description="Dokümandaki geri alınan işlemi yineler (Redo).")
+def redo(doc_name: str) -> dict:
+    return _safe_call(bridge.redo, doc_name)
+
+@mcp.tool(description="Nesnenin hacim, ağırlık merkezi (Center of Mass) ve atalet momenti (Matrix of Inertia) gibi fiziksel özelliklerini döner.")
+def get_physical_properties(doc_name: str, object_name: str) -> dict:
+    return _safe_call(bridge.get_physical_properties, doc_name, object_name)
+
+@mcp.tool(description="Nesnenin teknik çizimini (TechDraw) oluşturup PDF veya SVG olarak dışa aktarır.")
+def export_techdraw(doc_name: str, object_name: str, file_path: str) -> dict:
+    return _safe_call(bridge.export_techdraw, doc_name, object_name, file_path)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,6 @@
+# FreeCAD MCP Project Rules
+
+1. **NEVER** use Python libraries (like `matplotlib`, `pyvista`, `trimesh`, or `IPython`) to generate images, plots, or screenshots of 3D models.
+2. **ALWAYS** use the `get_view_screenshot` MCP tool to capture screenshots of 3D models.
+3. Before capturing a screenshot, **ALWAYS** use `set_camera_view` (e.g., isometric) to ensure the model is visible and framed correctly.
+4. Tell the user to "Ensure the FreeCAD GUI is open and the `newmacro.FCMacro` is running" if `get_view_screenshot` returns an error. Do not fallback to Python plotting.

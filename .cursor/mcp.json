@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "freecad-mcp": {
+      "command": "/Users/farukciftler/Documents/projects/freecadmcp/cursor_mcp_launcher.sh",
+      "args": []
+    }
+  }
+}

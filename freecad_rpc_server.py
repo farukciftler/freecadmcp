@@ -30,7 +30,7 @@ except ImportError:
 
 try:
     import FreeCADGui
-    HAS_GUI = FreeCADGui.GuiUp
+    HAS_GUI = FreeCAD.GuiUp
 except Exception:
     HAS_GUI = False
 
@@ -164,6 +164,12 @@ class FreeCADServiceImpl:
     def create_document(self, name: str) -> str:
         try:
             doc = FreeCAD.newDocument(name)
+            return _ok(doc_name=doc.Name)
+        except Exception as e: return _err(str(e))
+
+    def open_document(self, filepath: str) -> str:
+        try:
+            doc = FreeCAD.openDocument(filepath)
             return _ok(doc_name=doc.Name)
         except Exception as e: return _err(str(e))
 
@@ -518,6 +524,110 @@ class FreeCADServiceImpl:
             "stderr": stderr_buf.getvalue(),
             "result": str(result_val) if result_val is not None else None,
         })
+
+    # --- YENİ EKLENEN PROFESYONEL ÖZELLİKLER ---
+
+    def get_topology_info(self, doc: str, obj: str) -> str:
+        try:
+            d = _get_doc(doc)
+            o = d.getObject(obj)
+            if not o or not hasattr(o, "Shape") or not o.Shape: return _err("Object has no shape")
+            
+            edges = []
+            for i, e in enumerate(o.Shape.Edges):
+                edges.append({
+                    "index": i, "length": round(e.Length, 4),
+                    "center_mass": [round(c, 4) for c in [e.CenterOfMass.x, e.CenterOfMass.y, e.CenterOfMass.z]]
+                })
+            
+            faces = []
+            for i, f in enumerate(o.Shape.Faces):
+                faces.append({
+                    "index": i, "area": round(f.Area, 4),
+                    "center_mass": [round(c, 4) for c in [f.CenterOfMass.x, f.CenterOfMass.y, f.CenterOfMass.z]]
+                })
+                
+            return _ok(edges=edges, faces=faces)
+        except Exception as e: return _err(str(e))
+
+    def add_sketch_constraint(self, doc: str, sketch: str, constraint_type: str, geo1: int, pos1: int, geo2: int=-1, pos2: int=-1, value: float=0.0) -> str:
+        try:
+            d = _get_doc(doc)
+            s = d.getObject(sketch)
+            if not s: return _err("Sketch not found")
+            
+            import Sketcher
+            # Constraint Tipleri örn: 'Distance', 'Radius', 'Coincident', 'Parallel', 'Horizontal'
+            # Pos Değerleri: 1 (Start), 2 (End), 3 (Center), 0 (Edge)
+            if geo2 != -1 and value != 0.0:
+                c = Sketcher.Constraint(constraint_type, geo1, pos1, geo2, pos2, value)
+            elif geo2 != -1:
+                c = Sketcher.Constraint(constraint_type, geo1, pos1, geo2, pos2)
+            elif value != 0.0:
+                c = Sketcher.Constraint(constraint_type, geo1, pos1, value)
+            else:
+                c = Sketcher.Constraint(constraint_type, geo1, pos1)
+                    
+            s.addConstraint(c)
+            d.recompute()
+            return _ok(constraint_type=constraint_type)
+        except Exception as e: return _err(str(e))
+
+    def undo(self, doc: str) -> str:
+        try:
+            d = _get_doc(doc)
+            d.undo()
+            return _ok(action="undo")
+        except Exception as e: return _err(str(e))
+        
+    def redo(self, doc: str) -> str:
+        try:
+            d = _get_doc(doc)
+            d.redo()
+            return _ok(action="redo")
+        except Exception as e: return _err(str(e))
+
+    def get_physical_properties(self, doc: str, obj: str) -> str:
+        try:
+            d = _get_doc(doc)
+            o = d.getObject(obj)
+            shape = o.Shape
+            return _ok(
+                volume=round(shape.Volume, 4),
+                center_of_mass=[round(c, 4) for c in [shape.CenterOfMass.x, shape.CenterOfMass.y, shape.CenterOfMass.z]],
+                matrix_of_inertia=[round(v, 4) for v in shape.MatrixOfInertia.A]
+            )
+        except Exception as e: return _err(str(e))
+
+    def export_techdraw(self, doc: str, obj: str, filepath: str) -> str:
+        try:
+            d = _get_doc(doc)
+            o = d.getObject(obj)
+            import TechDraw
+            
+            page = d.addObject('TechDraw::DrawPage', 'Page')
+            template = d.addObject('TechDraw::DrawSVGTemplate', 'Template')
+            template.Template = FreeCAD.getResourceDir() + "Mod/TechDraw/Templates/A4_LandscapeTD.svg"
+            page.Template = template
+            
+            view = d.addObject('TechDraw::DrawViewPart', 'View')
+            view.Source = o
+            view.Direction = FreeCAD.Vector(0, 0, 1) # Varsayılan Üst (Top) Görünüş
+            page.addView(view)
+            
+            d.recompute()
+            
+            # Eğer GUI çalışmıyorsa PDF dışa aktarma sorun yaratabilir, SVG'ye zorluyoruz.
+            if HAS_GUI:
+                import TechDrawGui
+                TechDrawGui.exportPageAsPdf(page, filepath)
+            else:
+                if not filepath.lower().endswith(".svg"):
+                    filepath += ".svg"
+                page.exportPage(filepath)
+                
+            return _ok(path=filepath)
+        except Exception as e: return _err(str(e))
 
 _service_instance = FreeCADServiceImpl()
 
