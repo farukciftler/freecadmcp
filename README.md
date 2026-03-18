@@ -6,57 +6,57 @@
 [![FreeCAD](https://img.shields.io/badge/FreeCAD-1.0+-red.svg)](https://www.freecadweb.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-**Yapay Zeka (Claude, Cursor, Cline) ile Doğrudan 3D CAD Mühendisliği Yapın!**
+**Perform Direct 3D CAD Engineering with your AI (Claude, Cursor, Cline)!**
 
 </div>
 
-FreeCAD MCP, yapay zeka asistanlarınızın (Claude Desktop, Cursor AI vb.) doğrudan **FreeCAD 3D CAD yazılımı ile konuşmasını sağlayan** bir köprüdür. 
+FreeCAD MCP is a robust bridge that empowers your AI assistants (like Claude Desktop or Cursor AI) to **talk directly to the FreeCAD 3D CAD software.** 
 
-Siz sadece doğal dilde *"Masa için kavisli bir akıllı telefon tutucu çiz ve 3D çıktısını ver"* dersiniz; yapay zeka arka planda FreeCAD'in güçlü C++ motorunu kullanarak tasarımı paramerik olarak çizer, teknik resimlerini çıkartır ve 3D yazıcıya (STL/STEP) hazır hale getirir!
-
----
-
-## 🌟 Neler Yapabilirsiniz? (Yetenekler)
-
-Bu sunucu basit şekiller çizen bir "oyuncak" değildir; eksiksiz bir mühendislik asistanı olarak kodlanmıştır.
-
-- **🛠 Temel ve Karmaşık Geometriler:** Küp, Silindir, Koni vb. primitifler veya Sketch (2D Çizim) üzerinden Pad (Extrude) ve Pocket (Kesme) işlemleri.
-- **🏗 Boolean İşlemleri:** Parçaları Birleştirme (Union), Kesme (Cut/Subtract) ve Kesişim (Intersection).
-- **📐 Parametrik Mühendislik (Constraints):** Koordinat ezberlemek yerine; Teğet (Tangent), Paralel (Parallel), Eşmerkezli (Coincident) gibi Sketch kısıtlamaları ekleyebilme.
-- **👁 Topolojik Hassasiyet:** Yapay zekanın "şu nesnenin en üst yüzeyi" veya "şu kenar" diyebilmesi için tüm modelin Alan, Uzunluk ve Kütle Merkezi koordinatlarını saniyesinde okuma.
-- **⚖️ Fiziksel Analizler:** Tasarlanan parçanın Hacmini, Ağırlık Merkezini (Center of Mass) ve Atalet Momentini hesaplama.
-- **📸 Yüksek Kaliteli Önizlemeler (Render):** Yapay zeka, sahte grafik çizimleri yerine, FreeCAD'in profesyonel 3D viewport'undan *gerçek ekran görüntülerini* alarak size anında sunar.
-- **📄 2D Teknik Çizim (TechDraw):** 3D modelin Üst, Ön, Yan ve İzometrik açılarından otomatik olarak A4 ölçülü Teknik Çizim (Blueprint) kağıtları oluşturma.
-- **💾 Çoklu Format (Export):** `.FCStd` (FreeCAD Projesi), `.STL` (3D Baskı) ve `.STEP` (Evrensel CAD) formatlarında dışa aktarma.
+Simply tell your AI in natural language: *"Draw a curved smartphone holder for the desk and give me the 3D print file"*, and the AI will use FreeCAD's powerful C++ engine in the background to parametrically design the part, generate its technical blueprints, and export it ready for 3D printing (STL/STEP)!
 
 ---
 
-## ⚙️ Kurulum (2 Adımda Çok Basit)
+## 🌟 Features & Capabilities
 
-Sistemin çalışması için iki parça vardır: FreeCAD'in içindeki dinleyici makro ve bilgisayarınızda çalışan MCP Sunucusu.
+This server is not a toy for drawing basic shapes; it is coded as a complete engineering assistant.
 
-### Adım 1: FreeCAD'i Hazırlayın (Makro Kurulumu)
-1. Bu projeyi bilgisayarınıza indirin (`git clone`).
-2. FreeCAD'i açın. Üst menüden **Macro > Macros...** (Makrolar) seçeneğine tıklayın.
-3. Çıkan pencerede **Destination (Hedef Dizin)** yazan yeri bulun. Bu, FreeCAD'in makroları okuduğu klasördür (Örn: `~/Library/Application Support/FreeCAD/Macro`).
-4. Proje klasöründeki **`freecad_rpc_server.py`** dosyasını (veya adını değiştirip `newmacro.FCMacro` yaparak) bu hedefe kopyalayın.
-5. Makro penceresinde bu dosyayı seçip **Execute (Çalıştır)** butonuna basın.
-*(FreeCAD konsolunda "✅ Safe RPC sunucusu başladı → 127.0.0.1:36875" yazdığını göreceksiniz. Artık FreeCAD, yapay zekadan gelecek komutları dinliyor!)*
+- **🛠 Basic & Complex Geometries:** Draw primitives (Box, Cylinder, Cone, etc.) or create 2D Sketches and perform Pad (Extrude) / Pocket (Cut) operations.
+- **🏗 Boolean Operations:** Combine parts (Union), subtract them (Cut), or find their Intersection.
+- **📐 Parametric Engineering (Constraints):** Instead of memorizing coordinates, apply Sketcher constraints such as Tangent, Parallel, Coincident, or Distance.
+- **👁 Topological Precision:** The AI can query the exact Length, Area, and Center of Mass coordinates of any edge or face. This enables the AI to precisely target "the top face" or "the longest edge" when applying Fillets or Chamfers.
+- **⚖️ Physical Analysis:** Calculate the Volume, Center of Mass, and Matrix of Inertia of any designed part instantly.
+- **📸 High-Quality Previews (Rendering):** Instead of generating fake Python plots, the AI utilizes FreeCAD's professional 3D viewport to capture and deliver *real screenshots* of your model, complete with shadows and accurate perspectives.
+- **📄 2D TechDraw (Blueprints):** Automatically generate A4-sized Technical Drawing templates (Blueprints) showing the Top, Front, Right, and Isometric views of your 3D models.
+- **💾 Multi-Format Export:** Export your designs as `.FCStd` (FreeCAD Project), `.STL` (for 3D Printing), and `.STEP` (Universal CAD format).
 
-### Adım 2: MCP Sunucusunu Yapay Zekaya (AI) Ekleyin
+---
 
-#### Seçenek A: Cursor Editör İçin
-Cursor'ın 3D modelleri kendi kendine çizmesi için projeye bir `cursor_mcp_launcher.sh` dosyası dahil ettik.
-1. Cursor'ı açın.
-2. **Settings (Ayarlar) > Features > MCP Servers** menüsüne gidin.
-3. **+ Add New MCP Server** diyerek şu bilgileri girin:
+## ⚙️ Installation (2 Simple Steps)
+
+The system consists of two parts: a listening macro inside FreeCAD, and the MCP Server running on your machine.
+
+### Step 1: Prepare FreeCAD (Macro Installation)
+1. Clone this project to your machine (`git clone`).
+2. Open FreeCAD. From the top menu, go to **Macro > Macros...**
+3. In the window that appears, find the **Destination** path. This is the folder where FreeCAD reads its macros (e.g., `~/Library/Application Support/FreeCAD/Macro` on macOS).
+4. Copy the **`freecad_rpc_server.py`** file from this project into that destination folder (you can rename it to `newmacro.FCMacro` if you prefer).
+5. Select this file in the Macro window and click **Execute**.
+*(You will see a message in the FreeCAD console saying "✅ Safe RPC sunucusu başladı → 127.0.0.1:36875". FreeCAD is now listening for commands from your AI!)*
+
+### Step 2: Add the MCP Server to Your AI
+
+#### Option A: For Cursor Editor
+We have included a `cursor_mcp_launcher.sh` script to help Cursor seamlessly run the server and generate 3D models.
+1. Open Cursor.
+2. Go to **Settings > Features > MCP Servers**.
+3. Click **+ Add New MCP Server** and enter the following:
    - **Name:** FreeCAD
    - **Type:** command
-   - **Command:** `[PROJENIN_TAM_YOLU]/cursor_mcp_launcher.sh` *(Örn: `/Users/Ahmet/freecad-mcp/cursor_mcp_launcher.sh`)*
-4. Kaydedin ve yenileyin. Artık Cursor'da Cmd+L (Chat) ekranında 3D tasarımlar yaptırabilirsiniz!
+   - **Command:** `[FULL_PATH_TO_PROJECT]/cursor_mcp_launcher.sh` *(e.g., `/Users/John/freecad-mcp/cursor_mcp_launcher.sh`)*
+4. Save and refresh. You can now prompt Cursor in the Chat (Cmd+L) to start 3D designing!
 
-#### Seçenek B: Claude Desktop İçin
-`claude_desktop_config.example.json` dosyasını kopyalayıp Claude uygulamanızın (Mac'te: `~/Library/Application Support/Claude/claude_desktop_config.json`) ayar dosyasına yapıştırın:
+#### Option B: For Claude Desktop
+Copy the contents of `claude_desktop_config.example.json` and paste them into your Claude configuration file (on macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
@@ -64,7 +64,7 @@ Cursor'ın 3D modelleri kendi kendine çizmesi için projeye bir `cursor_mcp_lau
       "command": "python",
       "args": ["-m", "server.main"],
       "env": {
-        "PYTHONPATH": "/[PROJENIN_TAM_YOLU]"
+        "PYTHONPATH": "/[FULL_PATH_TO_PROJECT]"
       }
     }
   }
@@ -73,23 +73,23 @@ Cursor'ın 3D modelleri kendi kendine çizmesi için projeye bir `cursor_mcp_lau
 
 ---
 
-## 💡 Nasıl Kullanılır? (Örnek İstekler)
+## 💡 How to Use (Prompt Examples)
 
-Sistem kurulduktan ve FreeCAD arkaplanda (veya açıkken makro çalıştırılmış halde) beklerken yapay zekanıza (Claude / Cursor) şunları yazabilirsiniz:
+Once the setup is complete and FreeCAD is running in the background (with the macro executed), you can prompt your AI (Claude / Cursor) with tasks like:
 
-* *"Bana 10mm çapında ve 20mm yüksekliğinde bir silindir çiz, üst kenarına 2mm pah (fillet) kır ve stl olarak kaydet."*
-* *"Mevcut 'motor_blogu.FCStd' dosyasını aç. İçindeki 'AnaGovde' parçasının ağırlık merkezini hesapla ve bana söyle."*
-* *"Kavisli, modern bir akıllı telefon standı modelle. Sadece kodu yazma, FreeCAD'de de üret. Parçanın her yönden (Üst, Ön, Yan) teknik çizimlerini içeren A4 şablonunu oluştur. Sonra da bana Isometric kameradan gerçek bir ekran görüntüsünü at."*
+* *"Draw me a cylinder with a 10mm diameter and 20mm height, apply a 2mm fillet to the top edge, and save it as an STL."*
+* *"Open the existing 'engine_block.FCStd' file. Calculate the center of mass for the 'MainBody' part and tell me the result."*
+* *"Model a curved, modern smartphone stand. Don't just write the code; actually produce it in FreeCAD. Create an A4 TechDraw template containing the Top, Front, and Side views of the part. Then, send me a real screenshot from the Isometric camera."*
 
 ---
 
-## 🏗 Mimari (Nasıl Çalışıyor?)
+## 🏗 Architecture (How it Works)
 
-Sistem iki yönlü, çökme korumalı (thread-safe) bir mimari kullanır:
-1. **FreeCAD RPC Server (`freecad_rpc_server.py`):** FreeCAD içindeki Python API'sini ana iş parçacığında (Main Thread) güvenli bir şekilde dışa açan bir XML-RPC köprüsüdür.
-2. **MCP Fast API Sunucusu (`server/main.py`):** Claude veya Cursor'ın dilinden anlayan (stdio tabanlı) ve onlara "Araçlar (Tools)" sunan ana mantık katmanıdır. Gelen tüm komutları yakalar ve Bridge (Köprü) üzerinden FreeCAD'e iletir.
+The system uses a two-way, thread-safe architecture:
+1. **FreeCAD RPC Server (`freecad_rpc_server.py`):** An XML-RPC bridge that safely exposes FreeCAD's Python API to the outside world, ensuring operations run on FreeCAD's Main Thread to prevent crashes.
+2. **MCP Fast API Server (`server/main.py`):** The core logic layer that speaks the language of Claude or Cursor (stdio-based) and provides them with "Tools". It intercepts all natural language AI commands and forwards the exact geometric instructions to FreeCAD via the Bridge.
 
-## 🤝 Katkıda Bulunun (Contributing)
-Eksik gördüğünüz FreeCAD özelliklerini (Örn: Assembly4, FEM analizleri vb.) `server/freecad_bridge.py` ve `freecad_rpc_server.py` dosyalarına ekleyerek Pull Request atabilirsiniz. 
+## 🤝 Contributing
+Feel free to submit Pull Requests to add missing FreeCAD features (e.g., Assembly4 constraints, FEM analysis) into the `server/freecad_bridge.py` and `freecad_rpc_server.py` files.
 
-**Lisans:** MIT License
+**License:** MIT License
