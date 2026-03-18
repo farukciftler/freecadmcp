@@ -1,9 +1,9 @@
 """
-FreeCAD İçi XML-RPC Sunucusu (Thread-Safe Sürüm)
+FreeCAD In-App XML-RPC Server (Thread-Safe Version)
 ==============================================
-Bu dosyayı FreeCAD içinde bir Makro olarak çalıştırın.
+Run this file as a Macro inside FreeCAD.
 
-Sunucu, gelen istekleri ana iş parçacığına yönlendirir ve çökme koruması sağlar.
+The server routes incoming requests to the main thread and prevents crashes.
 """
 
 import sys
@@ -16,7 +16,7 @@ import os
 import queue
 from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
-# FreeCAD modülleri
+# FreeCAD modules
 import FreeCAD
 import Part
 import Draft
@@ -34,30 +34,30 @@ try:
 except Exception:
     HAS_GUI = False
 
-# PySide2 veya PySide6 import denemesi
+# PySide2 or PySide6 import attempt
 QtCore = None
 try:
     from PySide2 import QtCore
-    FreeCAD.Console.PrintMessage("✅ PySide2 bulundu.\\n")
+    FreeCAD.Console.PrintMessage("✅ PySide2 found.\\n")
 except Exception as e2:
     try:
         from PySide6 import QtCore
-        FreeCAD.Console.PrintMessage("✅ PySide6 bulundu.\\n")
+        FreeCAD.Console.PrintMessage("✅ PySide6 found.\\n")
     except Exception as e6:
         try:
             from PySide import QtCore
-            FreeCAD.Console.PrintMessage("✅ PySide bulundu.\\n")
+            FreeCAD.Console.PrintMessage("✅ PySide found.\\n")
         except Exception as e1:
-            FreeCAD.Console.PrintError(f"❌ Tüm Qt bağlamaları (PySide2/6/1) başarısız oldu!\\n")
-            FreeCAD.Console.PrintError(f"   (PySide2 hatası: {str(e2)})\\n")
+            FreeCAD.Console.PrintError(f"❌ All Qt bindings (PySide2/6/1) failed!\\n")
+            FreeCAD.Console.PrintError(f"   (PySide2 error: {str(e2)})\\n")
             FreeCAD.Console.PrintMessage(f"   sys.path: {sys.path[:3]}\\n")
             QtCore = None
 
 HOST = "127.0.0.1"
-PORT = 36875 # Claude konfigürasyonundaki port
+PORT = 36875 # Claude configuration port
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Thread-Safe İstek İşleyici
+# Thread-Safe Request Handler
 # ──────────────────────────────────────────────────────────────────────────────
 
 class RPCRequest:
@@ -69,34 +69,34 @@ class RPCRequest:
         self.error = None
         self.completed = threading.Event()
 
-# Global nesneleri koru (Garbage Collection'ı önle)
+# Protect global objects (Prevent Garbage Collection)
 global _request_queue, _timer, _server, _service_instance
 _request_queue = queue.Queue()
 
 def _process_queue():
-    """Ana iş parçacığında (Main Thread) çalışan poller."""
+    """Poller running on the Main Thread."""
     try:
         while not _request_queue.empty():
             req = _request_queue.get_nowait()
-            FreeCAD.Console.PrintMessage(f"RPC İşleniyor: {req.method_name}\\n")
+            FreeCAD.Console.PrintMessage(f"Processing RPC: {req.method_name}\\n")
             try:
                 method = getattr(_service_instance, req.method_name)
                 req.result = method(*req.args, **req.kwargs)
-                FreeCAD.Console.PrintMessage(f"RPC Tamamlandı: {req.method_name}\\n")
+                FreeCAD.Console.PrintMessage(f"RPC Completed: {req.method_name}\\n")
             except Exception as e:
                 req.error = str(e)
-                FreeCAD.Console.PrintError(f"RPC Hata [{req.method_name}]: {traceback.format_exc()}\\n")
+                FreeCAD.Console.PrintError(f"RPC Error [{req.method_name}]: {traceback.format_exc()}\\n")
             finally:
                 req.completed.set()
     except queue.Empty:
         pass
     except Exception as e:
-        FreeCAD.Console.PrintError(f"Timer Hata: {str(e)}\\n")
+        FreeCAD.Console.PrintError(f"Timer Error: {str(e)}\\n")
 
-# Tanı: GUI durumu
-FreeCAD.Console.PrintMessage(f"Tanı: HAS_GUI={HAS_GUI}, QtCore={'Mevcut' if QtCore else 'Yok'}\\n")
+# Diagnostics: GUI status
+FreeCAD.Console.PrintMessage(f"Diagnosis: HAS_GUI={HAS_GUI}, QtCore={'Available' if QtCore else 'None'}\\n")
 
-# QTimer ile kuyruğu dinle
+# Listen to the queue with QTimer
 if QtCore:
     try:
         from PySide2 import QtWidgets
@@ -111,12 +111,12 @@ if QtCore:
     _timer.timeout.connect(_process_queue)
     _timer.setTimerType(QtCore.Qt.PreciseTimer)
     _timer.start(50) 
-    FreeCAD.Console.PrintMessage("✅ QTimer poller (Thread-Safe) başlatıldı.\\n")
+    FreeCAD.Console.PrintMessage("✅ QTimer poller (Thread-Safe) started.\\n")
 else:
-    FreeCAD.Console.PrintError("❌ QtCore bulunamadı, poller başlatılamıyor!\\n")
+    FreeCAD.Console.PrintError("❌ QtCore not found, cannot start poller!\\n")
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Yardımcı fonksiyonlar
+# Helper functions
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _ok(**kwargs) -> str:
@@ -154,7 +154,7 @@ def _shape_info(shape) -> dict:
         return {}
 
 # ──────────────────────────────────────────────────────────────────────────────
-# RPC Metotları (Gerçek Mantık)
+# RPC Methods (Actual Logic)
 # ──────────────────────────────────────────────────────────────────────────────
 
 class FreeCADServiceImpl:
@@ -525,7 +525,7 @@ class FreeCADServiceImpl:
             "result": str(result_val) if result_val is not None else None,
         })
 
-    # --- YENİ EKLENEN PROFESYONEL ÖZELLİKLER ---
+    # --- NEW PROFESSIONAL FEATURES ---
 
     def get_topology_info(self, doc: str, obj: str) -> str:
         try:
@@ -557,8 +557,8 @@ class FreeCADServiceImpl:
             if not s: return _err("Sketch not found")
             
             import Sketcher
-            # Constraint Tipleri örn: 'Distance', 'Radius', 'Coincident', 'Parallel', 'Horizontal'
-            # Pos Değerleri: 1 (Start), 2 (End), 3 (Center), 0 (Edge)
+            # Constraint Types e.g., 'Distance', 'Radius', 'Coincident', 'Parallel', 'Horizontal'
+            # Pos Values: 1 (Start), 2 (End), 3 (Center), 0 (Edge)
             if geo2 != -1 and value != 0.0:
                 c = Sketcher.Constraint(constraint_type, geo1, pos1, geo2, pos2, value)
             elif geo2 != -1:
@@ -612,12 +612,12 @@ class FreeCADServiceImpl:
             
             view = d.addObject('TechDraw::DrawViewPart', 'View')
             view.Source = o
-            view.Direction = FreeCAD.Vector(0, 0, 1) # Varsayılan Üst (Top) Görünüş
+            view.Direction = FreeCAD.Vector(0, 0, 1) # Default Top View
             page.addView(view)
             
             d.recompute()
             
-            # Eğer GUI çalışmıyorsa PDF dışa aktarma sorun yaratabilir, SVG'ye zorluyoruz.
+            # Export to SVG if headless, or PDF if GUI is available
             if HAS_GUI:
                 import TechDrawGui
                 TechDrawGui.exportPageAsPdf(page, filepath)
@@ -641,7 +641,7 @@ class ThreadSafeFreeCADProxy:
         return req.result
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Sunucuyu başlat
+# Start the Server
 # ──────────────────────────────────────────────────────────────────────────────
 
 class _QuietHandler(SimpleXMLRPCRequestHandler):
@@ -653,7 +653,7 @@ _server: SimpleXMLRPCServer | None = None
 def start_server():
     global _server
     if _server is not None:
-        FreeCAD.Console.PrintMessage("RPC sunucusu zaten çalışıyor.\\n")
+        FreeCAD.Console.PrintMessage("RPC server is already running.\\n")
         return
 
     _server = SimpleXMLRPCServer(
@@ -667,7 +667,7 @@ def start_server():
 
     thread = threading.Thread(target=_server.serve_forever, daemon=True)
     thread.start()
-    FreeCAD.Console.PrintMessage(f"✅ Safe RPC sunucusu başladı → {HOST}:{PORT}\\n")
+    FreeCAD.Console.PrintMessage(f"✅ Safe RPC server started → {HOST}:{PORT}\\n")
 
 def stop_server():
     global _server, _timer
@@ -677,7 +677,7 @@ def stop_server():
     if _timer:
         _timer.stop()
         _timer = None
-    FreeCAD.Console.PrintMessage("🛑 Safe RPC sunucusu durduruldu.\\n")
+    FreeCAD.Console.PrintMessage("🛑 Safe RPC server stopped.\\n")
 
 if __name__ == "__main__":
     start_server()

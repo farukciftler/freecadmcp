@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "freecad-mcp"
 version = "0.1.0"
-description = "FreeCAD için Model Context Protocol (MCP) Sunucusu"
+description = "Model Context Protocol (MCP) Server for FreeCAD"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

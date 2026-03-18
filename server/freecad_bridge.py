@@ -1,8 +1,8 @@
 """
-FreeCAD Bridge — XML-RPC aracılığıyla FreeCAD süreciyle konuşur.
+FreeCAD Bridge — Communicates with the FreeCAD process via XML-RPC.
 
-FreeCAD tarafında freecad_rpc_server.py çalışıyor olmalı.
-Varsayılan adres: 127.0.0.1:9875
+'freecad_rpc_server.py' must be running on the FreeCAD side.
+Default address: 127.0.0.1:36875
 """
 
 import xmlrpc.client
@@ -17,7 +17,7 @@ FREECAD_RPC_URL = "http://127.0.0.1:36875"
 
 
 class FreeCADBridge:
-    """FreeCAD XML-RPC köprüsü."""
+    """FreeCAD XML-RPC bridge."""
 
     def __init__(self, url: str = FREECAD_RPC_URL):
         self.url = url
@@ -35,15 +35,15 @@ class FreeCADBridge:
             result = fn(*args)
             return result
         except xmlrpc.client.Fault as exc:
-            raise RuntimeError(f"FreeCAD RPC hatası [{exc.faultCode}]: {exc.faultString}") from exc
+            raise RuntimeError(f"FreeCAD RPC error [{exc.faultCode}]: {exc.faultString}") from exc
         except ConnectionRefusedError:
             raise RuntimeError(
-                "FreeCAD RPC sunucusuna bağlanılamadı. "
-                "FreeCAD içinde 'freecad_rpc_server.py' çalıştırıldığından emin olun."
+                "Could not connect to FreeCAD RPC server. "
+                "Ensure 'freecad_rpc_server.py' is running inside FreeCAD."
             )
 
     # ------------------------------------------------------------------ #
-    # Belge işlemleri
+    # Document operations
     # ------------------------------------------------------------------ #
 
     def create_document(self, name: str = "Unnamed") -> dict:
@@ -62,7 +62,7 @@ class FreeCADBridge:
         return json.loads(self._call("list_documents"))
 
     # ------------------------------------------------------------------ #
-    # Katı geometri
+    # Solid geometry (Primitives)
     # ------------------------------------------------------------------ #
 
     def create_box(self, doc: str, name: str, length: float, width: float, height: float) -> dict:
@@ -78,7 +78,7 @@ class FreeCADBridge:
         return json.loads(self._call("create_cone", doc, name, radius1, radius2, height))
 
     # ------------------------------------------------------------------ #
-    # Boolean operasyonlar
+    # Boolean operations
     # ------------------------------------------------------------------ #
 
     def boolean_union(self, doc: str, name: str, base: str, tool: str) -> dict:
@@ -121,7 +121,7 @@ class FreeCADBridge:
         return json.loads(self._call("chamfer", doc, body, feature, edges, size))
 
     # ------------------------------------------------------------------ #
-    # Nesne manipülasyonu
+    # Object manipulation
     # ------------------------------------------------------------------ #
 
     def move_object(self, doc: str, obj: str, x: float, y: float, z: float) -> dict:
@@ -134,7 +134,7 @@ class FreeCADBridge:
         return json.loads(self._call("set_property", doc, obj, prop, json.dumps(value)))
 
     # ------------------------------------------------------------------ #
-    # Bilgi / kaynak sorgulama
+    # Data & Hierarchy querying
     # ------------------------------------------------------------------ #
 
     def get_object_tree(self, doc: str) -> dict:
@@ -147,14 +147,14 @@ class FreeCADBridge:
         return json.loads(self._call("get_system_info"))
 
     def get_view_screenshot(self, doc: str) -> str:
-        """Base64 PNG döner."""
+        """Returns Base64 PNG."""
         res = json.loads(self._call("get_view_screenshot", doc))
         if not res.get("ok"):
             raise RuntimeError(res.get("error", "Unknown screenshot error"))
         return res["image_base64"]
 
     # ------------------------------------------------------------------ #
-    # Yeni Özellikler (Dışa Aktarma, Kamera)
+    # Professional Tools (Export, TechDraw, Constraints, Topology)
     # ------------------------------------------------------------------ #
 
     def export_document(self, doc: str, filename: str) -> dict:
@@ -162,17 +162,6 @@ class FreeCADBridge:
 
     def set_camera_view(self, doc: str, view_type: str) -> dict:
         return json.loads(self._call("set_camera_view", doc, view_type))
-
-    # ------------------------------------------------------------------ #
-    # Serbest kod yürütme
-    # ------------------------------------------------------------------ #
-
-    def execute_code(self, code: str) -> dict:
-        return json.loads(self._call("execute_code", code))
-
-    # ------------------------------------------------------------------ #
-    # Yeni Profesyonel Araçlar (Topoloji, Kısıtlamalar, TechDraw vb.)
-    # ------------------------------------------------------------------ #
 
     def get_topology_info(self, doc: str, obj: str) -> dict:
         return json.loads(self._call("get_topology_info", doc, obj))
@@ -193,7 +182,14 @@ class FreeCADBridge:
         return json.loads(self._call("export_techdraw", doc, obj, filepath))
 
     # ------------------------------------------------------------------ #
-    # Yardımcılar
+    # Free code execution
+    # ------------------------------------------------------------------ #
+
+    def execute_code(self, code: str) -> dict:
+        return json.loads(self._call("execute_code", code))
+
+    # ------------------------------------------------------------------ #
+    # Helpers
     # ------------------------------------------------------------------ #
 
     def ping(self) -> bool:

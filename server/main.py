@@ -1,10 +1,10 @@
 """
-FreeCAD MCP Sunucusu — ana giriş noktası.
+FreeCAD MCP Server — main entry point.
 
-Kullanım:
-    python -m server.main          # stdio (Claude Desktop / Cursor için)
+Usage:
+    python -m server.main          # stdio (For Claude Desktop / Cursor)
 
-FreeCAD tarafında freecad_rpc_server.py çalışıyor olmalı.
+'freecad_rpc_server.py' must be running on the FreeCAD side.
 """
 
 import logging
@@ -21,15 +21,16 @@ logger = logging.getLogger(__name__)
 mcp = FastMCP(
     name="freecad-mcp",
     instructions=(
-        "Sen bir FreeCAD CAD asistanısın. "
-        "Kullanıcının 3D geometri oluşturmasına, manipüle etmesine ve kaydetmesine yardımcı olursun. "
-        "Her işlemden sonra 'get_object_tree' ile sonucu doğrula. "
-        "Hata alırsan 'self-correction' döngüsüyle düzelt. "
-        "ÖNEMLİ KURAL: Kullanıcı 'önizleme', 'ekran görüntüsü' veya 'görsel' istediğinde KESİNLİKLE "
-        "matplotlib, trimesh, pyvista gibi harici Python kütüphanelerini kullanarak özel çizim (plot) kodu YAZMA. "
-        "Bunun yerine DAİMA önce 'set_camera_view' (örn: isometric) aracını kullan, ardından 'get_view_screenshot' "
-        "aracını çağırarak FreeCAD'in kendi yüksek kaliteli ekran görüntüsünü kullanıcıya sun."
-        "modellerde ve önizlemede mm kullan. türkçe karakter kullanmaktan çekinme."
+        "You are a FreeCAD CAD assistant. "
+        "You help the user create, manipulate, and save 3D geometry. "
+        "Verify the result after each operation using 'get_object_tree'. "
+        "If you encounter an error, use a self-correction loop to fix it. "
+        "IMPORTANT RULE: When the user asks for a 'preview', 'screenshot', or 'image', "
+        "ABSOLUTELY DO NOT write custom plotting code using external Python libraries "
+        "like matplotlib, trimesh, or pyvista. "
+        "Instead, ALWAYS use the 'set_camera_view' tool (e.g., isometric) first, "
+        "and then call the 'get_view_screenshot' tool to provide the user with "
+        "FreeCAD's own high-quality screenshot."
     ),
 )
 
@@ -37,68 +38,68 @@ bridge = FreeCADBridge()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Yardımcı
+# Helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _safe_call(fn, *args, **kwargs) -> dict[str, Any]:
-    """Bridge çağrısını hata yönetimiyle sarar."""
+    """Wraps bridge calls with error handling."""
     try:
         return fn(*args, **kwargs)
     except Exception as exc:
         friendly = enrich_error(str(exc))
-        logger.error("Bridge hatası: %s", exc)
+        logger.error("Bridge error: %s", exc)
         return {"ok": False, "error": friendly}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ARAÇLAR — Belge Yönetimi
+# TOOLS — Document Management
 # ──────────────────────────────────────────────────────────────────────────────
 
-@mcp.tool(description="Yeni bir boş FreeCAD belgesi oluşturur.")
+@mcp.tool(description="Creates a new empty FreeCAD document.")
 def create_document(name: str = "Unnamed") -> dict:
     """
-    Parametre:
-        name: Belge adı (varsayılan: 'Unnamed').
-    Döner:
+    Parameters:
+        name: Document name (default: 'Unnamed').
+    Returns:
         ok, doc_name
     """
     return _safe_call(bridge.create_document, name)
 
 
-@mcp.tool(description="Diskteki mevcut bir FreeCAD (.FCStd) dosyasını veya desteklenen formattaki bir objeyi açar.")
+@mcp.tool(description="Opens an existing FreeCAD (.FCStd) file or a supported format from disk.")
 def open_document(file_path: str) -> dict:
     """
-    Parametreler:
-        file_path: Açılacak dosyanın tam yolu.
+    Parameters:
+        file_path: Full path to the file to open.
     """
     return _safe_call(bridge.open_document, file_path)
 
 
-@mcp.tool(description="Belgeyi diske kaydeder.")
+@mcp.tool(description="Saves the document to disk.")
 def save_document(doc_name: str, file_path: str) -> dict:
     """
-    Parametreler:
-        doc_name : Kayıt edilecek belge adı.
-        file_path: Tam dosya yolu (.FCStd uzantısıyla).
+    Parameters:
+        doc_name : Name of the document to save.
+        file_path: Full file path (with .FCStd extension).
     """
     return _safe_call(bridge.save_document, doc_name, file_path)
 
 
-@mcp.tool(description="Belgeyi kapatır.")
+@mcp.tool(description="Closes the document.")
 def close_document(doc_name: str) -> dict:
     return _safe_call(bridge.close_document, doc_name)
 
 
-@mcp.tool(description="Açık tüm FreeCAD belgelerini listeler.")
+@mcp.tool(description="Lists all open FreeCAD documents.")
 def list_documents() -> dict:
     return _safe_call(bridge.list_documents)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ARAÇLAR — Katı Geometri (Part Workbench)
+# TOOLS — Solid Geometry (Part Workbench)
 # ──────────────────────────────────────────────────────────────────────────────
 
-@mcp.tool(description="Belirtilen boyutlarda bir kutu (dikdörtgen prizma) oluşturur.")
+@mcp.tool(description="Creates a box (rectangular prism) with specified dimensions.")
 def create_box(
     doc_name: str,
     object_name: str,
@@ -107,17 +108,17 @@ def create_box(
     height: float,
 ) -> dict:
     """
-    Parametreler:
-        doc_name   : Belge adı.
-        object_name: Nesneyei verilecek ad.
-        length     : X eksenindeki uzunluk (mm).
-        width      : Y eksenindeki genişlik (mm).
-        height     : Z eksenindeki yükseklik (mm).
+    Parameters:
+        doc_name   : Document name.
+        object_name: Name given to the object.
+        length     : Length along the X axis (mm).
+        width      : Width along the Y axis (mm).
+        height     : Height along the Z axis (mm).
     """
     return _safe_call(bridge.create_box, doc_name, object_name, length, width, height)
 
 
-@mcp.tool(description="Silindir oluşturur.")
+@mcp.tool(description="Creates a cylinder.")
 def create_cylinder(
     doc_name: str,
     object_name: str,
@@ -125,16 +126,16 @@ def create_cylinder(
     height: float,
 ) -> dict:
     """
-    Parametreler:
-        doc_name   : Belge adı.
-        object_name: Nesne adı.
-        radius     : Yarıçap (mm).
-        height     : Yükseklik (mm).
+    Parameters:
+        doc_name   : Document name.
+        object_name: Object name.
+        radius     : Radius (mm).
+        height     : Height (mm).
     """
     return _safe_call(bridge.create_cylinder, doc_name, object_name, radius, height)
 
 
-@mcp.tool(description="Küre oluşturur.")
+@mcp.tool(description="Creates a sphere.")
 def create_sphere(
     doc_name: str,
     object_name: str,
@@ -143,7 +144,7 @@ def create_sphere(
     return _safe_call(bridge.create_sphere, doc_name, object_name, radius)
 
 
-@mcp.tool(description="Koni oluşturur.")
+@mcp.tool(description="Creates a cone.")
 def create_cone(
     doc_name: str,
     object_name: str,
@@ -152,43 +153,43 @@ def create_cone(
     height: float,
 ) -> dict:
     """
-    Parametreler:
-        radius1: Alt taban yarıçapı (mm).
-        radius2: Üst taban yarıçapı (mm; 0 → sivri uç).
-        height : Yükseklik (mm).
+    Parameters:
+        radius1: Bottom base radius (mm).
+        radius2: Top base radius (mm; 0 -> sharp point).
+        height : Height (mm).
     """
     return _safe_call(bridge.create_cone, doc_name, object_name, radius1, radius2, height)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ARAÇLAR — Boolean Operasyonlar
+# TOOLS — Boolean Operations
 # ──────────────────────────────────────────────────────────────────────────────
 
-@mcp.tool(description="İki katıyı birleştirir (Union / Fuse).")
+@mcp.tool(description="Joins two solids (Union / Fuse).")
 def boolean_union(doc_name: str, result_name: str, base_object: str, tool_object: str) -> dict:
     return _safe_call(bridge.boolean_union, doc_name, result_name, base_object, tool_object)
 
 
-@mcp.tool(description="Temel nesneden araç nesnesini çıkarır (Cut / Subtract).")
+@mcp.tool(description="Subtracts the tool object from the base object (Cut / Subtract).")
 def boolean_cut(doc_name: str, result_name: str, base_object: str, tool_object: str) -> dict:
     return _safe_call(bridge.boolean_cut, doc_name, result_name, base_object, tool_object)
 
 
-@mcp.tool(description="İki katının kesişimini alır (Common / Intersect).")
+@mcp.tool(description="Gets the intersection of two solids (Common / Intersect).")
 def boolean_common(doc_name: str, result_name: str, base_object: str, tool_object: str) -> dict:
     return _safe_call(bridge.boolean_common, doc_name, result_name, base_object, tool_object)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ARAÇLAR — Part Design (Body / Sketch / Pad / Pocket / Fillet / Chamfer)
+# TOOLS — Part Design (Body / Sketch / Pad / Pocket / Fillet / Chamfer)
 # ──────────────────────────────────────────────────────────────────────────────
 
-@mcp.tool(description="Part Design Body oluşturur. Sketch ve feature'lar buraya bağlanır.")
+@mcp.tool(description="Creates a Part Design Body. Sketches and features are attached here.")
 def create_body(doc_name: str, body_name: str) -> dict:
     return _safe_call(bridge.create_body, doc_name, body_name)
 
 
-@mcp.tool(description="Body'ye bağlı yeni bir Sketch oluşturur.")
+@mcp.tool(description="Creates a new Sketch attached to a Body.")
 def create_sketch(
     doc_name: str,
     body_name: str,
@@ -196,13 +197,13 @@ def create_sketch(
     plane: str = "XY",
 ) -> dict:
     """
-    Parametreler:
-        plane: 'XY', 'XZ' veya 'YZ'.
+    Parameters:
+        plane: 'XY', 'XZ', or 'YZ'.
     """
     return _safe_call(bridge.create_sketch, doc_name, body_name, sketch_name, plane)
 
 
-@mcp.tool(description="Sketch'e dikdörtgen ekler.")
+@mcp.tool(description="Adds a rectangle to a Sketch.")
 def add_rectangle_to_sketch(
     doc_name: str,
     sketch_name: str,
@@ -212,15 +213,15 @@ def add_rectangle_to_sketch(
     height: float,
 ) -> dict:
     """
-    Parametreler:
-        x, y   : Dikdörtgenin sol alt köşesi.
-        width  : Genişlik.
-        height : Yükseklik.
+    Parameters:
+        x, y   : Bottom-left corner of the rectangle.
+        width  : Width.
+        height : Height.
     """
     return _safe_call(bridge.add_rectangle_to_sketch, doc_name, sketch_name, x, y, width, height)
 
 
-@mcp.tool(description="Sketch'e daire ekler.")
+@mcp.tool(description="Adds a circle to a Sketch.")
 def add_circle_to_sketch(
     doc_name: str,
     sketch_name: str,
@@ -231,7 +232,7 @@ def add_circle_to_sketch(
     return _safe_call(bridge.add_circle_to_sketch, doc_name, sketch_name, center_x, center_y, radius)
 
 
-@mcp.tool(description="Sketch'i belirtilen uzunlukta ekstrüde eder (Pad).")
+@mcp.tool(description="Extrudes the Sketch to a specified length (Pad).")
 def pad(
     doc_name: str,
     body_name: str,
@@ -242,7 +243,7 @@ def pad(
     return _safe_call(bridge.pad, doc_name, body_name, sketch_name, length, feature_name)
 
 
-@mcp.tool(description="Sketch şeklinde belirlenen derinlikte boşluk açar (Pocket).")
+@mcp.tool(description="Creates a cavity shaped by the Sketch to a specified depth (Pocket).")
 def pocket(
     doc_name: str,
     body_name: str,
@@ -253,7 +254,7 @@ def pocket(
     return _safe_call(bridge.pocket, doc_name, body_name, sketch_name, depth, feature_name)
 
 
-@mcp.tool(description="Belirtilen kenarlara yuvarlatma (Fillet) uygular.")
+@mcp.tool(description="Applies a Fillet to specified edges.")
 def fillet(
     doc_name: str,
     body_name: str,
@@ -262,14 +263,14 @@ def fillet(
     radius: float,
 ) -> dict:
     """
-    Parametreler:
-        edge_indices: Yuvarlatılacak kenar indeksleri (0 tabanlı).
-        radius      : Yuvarlatma yarıçapı (mm).
+    Parameters:
+        edge_indices: Indices of the edges to fillet (0-based).
+        radius      : Fillet radius (mm).
     """
     return _safe_call(bridge.fillet, doc_name, body_name, feature_name, edge_indices, radius)
 
 
-@mcp.tool(description="Belirtilen kenarlara pah (Chamfer) uygular.")
+@mcp.tool(description="Applies a Chamfer to specified edges.")
 def chamfer(
     doc_name: str,
     body_name: str,
@@ -281,10 +282,10 @@ def chamfer(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ARAÇLAR — Nesne Manipülasyonu
+# TOOLS — Object Manipulation
 # ──────────────────────────────────────────────────────────────────────────────
 
-@mcp.tool(description="Nesneyi belirtilen koordinata taşır.")
+@mcp.tool(description="Moves the object to the specified coordinate.")
 def move_object(
     doc_name: str,
     object_name: str,
@@ -295,7 +296,7 @@ def move_object(
     return _safe_call(bridge.move_object, doc_name, object_name, x, y, z)
 
 
-@mcp.tool(description="Nesneyi belirtilen eksen etrafında döndürür.")
+@mcp.tool(description="Rotates the object around the specified axis.")
 def rotate_object(
     doc_name: str,
     object_name: str,
@@ -305,14 +306,14 @@ def rotate_object(
     angle_deg: float,
 ) -> dict:
     """
-    Parametreler:
-        axis_x/y/z: Dönüş ekseni (birim vektör).
-        angle_deg  : Dönüş açısı (derece).
+    Parameters:
+        axis_x/y/z: Rotation axis (unit vector).
+        angle_deg  : Rotation angle (degrees).
     """
     return _safe_call(bridge.rotate_object, doc_name, object_name, axis_x, axis_y, axis_z, angle_deg)
 
 
-@mcp.tool(description="Nesnenin belirli bir özelliğini (property) değiştirir.")
+@mcp.tool(description="Changes a specific property of the object.")
 def set_property(
     doc_name: str,
     object_name: str,
@@ -323,41 +324,41 @@ def set_property(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ARAÇLAR — Serbest Kod Yürütme
+# TOOLS — Free Code Execution
 # ──────────────────────────────────────────────────────────────────────────────
 
 @mcp.tool(
     description=(
-        "Doğrudan FreeCAD Python ortamında kod çalıştırır. "
-        "Standart araçların yetersiz kaldığı karmaşık senaryolar için kullanın. "
-        "⚠️  Güvenlik: Zararlı sistem komutları çalıştırmayın."
+        "Executes code directly in the FreeCAD Python environment. "
+        "Use for complex scenarios where standard tools are insufficient. "
+        "⚠️ Safety: Do not run harmful system commands."
     )
 )
 def execute_code(python_code: str) -> dict:
     """
-    Parametreler:
-        python_code: FreeCAD Python ortamında çalıştırılacak kod.
+    Parameters:
+        python_code: Code to run in the FreeCAD Python environment.
 
-    Döner:
+    Returns:
         ok, stdout, stderr, result
     """
     return _safe_call(bridge.execute_code, python_code)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ARAÇLAR — Görsel Doğrulama
+# TOOLS — Visual Verification
 # ──────────────────────────────────────────────────────────────────────────────
 
 @mcp.tool(
     description=(
-        "Aktif FreeCAD görünümünün ekran görüntüsünü Base64 PNG olarak döner. "
-        "Mekansal hataları (yanlış konum, kesişim problemi vb.) düzeltmek için kullanın."
+        "Returns a screenshot of the active FreeCAD view as a Base64 PNG. "
+        "Use to fix spatial errors (wrong position, intersection problems, etc.)."
     )
 )
 def get_view_screenshot(doc_name: str) -> dict:
     """
-    Döner:
-        ok, image_base64 (PNG, base64 kodlu)
+    Returns:
+        ok, image_base64 (PNG, base64 encoded)
     """
     try:
         b64 = bridge.get_view_screenshot(doc_name)
@@ -365,156 +366,155 @@ def get_view_screenshot(doc_name: str) -> dict:
     except Exception as exc:
         return {"ok": False, "error": enrich_error(str(exc))}
 
-@mcp.tool(description="Kamera açısını ayarlar (isometric, top, front, fit). Ekran görüntüsü öncesi faydalıdır.")
+@mcp.tool(description="Sets the camera angle (isometric, top, front, fit). Useful before taking a screenshot.")
 def set_camera_view(doc_name: str, view_type: str = "isometric") -> dict:
     return _safe_call(bridge.set_camera_view, doc_name, view_type)
 
-@mcp.tool(description="Belgeyi veya nesneleri STL, STEP formatında dışa aktarır.")
+@mcp.tool(description="Exports the document or objects in STL, STEP format.")
 def export_document(doc_name: str, file_path: str) -> dict:
     return _safe_call(bridge.export_document, doc_name, file_path)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# YENİ EKLENEN PROFESYONEL ARAÇLAR
+# PROFESSIONAL TOOLS
 # ──────────────────────────────────────────────────────────────────────────────
 
-@mcp.tool(description="Pah (Fillet/Chamfer) kırmak veya analiz için nesnenin tüm kenar ve yüzey topolojisini (Uzunluk, Alan ve Merkez Koordinatları) getirir.")
+@mcp.tool(description="Retrieves the full edge and face topology (Length, Area, and Center Coordinates) of an object for Fillet/Chamfer or analysis.")
 def get_topology_info(doc_name: str, object_name: str) -> dict:
     return _safe_call(bridge.get_topology_info, doc_name, object_name)
 
-@mcp.tool(description="Sketch'e geometrik kısıtlama ekler ('Distance', 'Radius', 'Coincident', 'Parallel', 'Horizontal', vb). pos1/pos2 parametreleri 1=Start, 2=End, 3=Center, 0=Edge'i ifade eder.")
+@mcp.tool(description="Adds a geometric constraint to a Sketch ('Distance', 'Radius', 'Coincident', 'Parallel', 'Horizontal', etc.). pos1/pos2 parameters represent 1=Start, 2=End, 3=Center, 0=Edge.")
 def add_sketch_constraint(
     doc_name: str, sketch_name: str, constraint_type: str, geo1: int, pos1: int, geo2: int = -1, pos2: int = -1, value: float = 0.0
 ) -> dict:
     return _safe_call(bridge.add_sketch_constraint, doc_name, sketch_name, constraint_type, geo1, pos1, geo2, pos2, value)
 
-@mcp.tool(description="Dokümandaki son işlemi geri alır (Undo). Hata yaptığınızda dokümanı baştan çizmek yerine bunu kullanın.")
+@mcp.tool(description="Undoes the last operation in the document (Undo). Use this instead of redrawing the document from scratch when you make a mistake.")
 def undo(doc_name: str) -> dict:
     return _safe_call(bridge.undo, doc_name)
 
-@mcp.tool(description="Dokümandaki geri alınan işlemi yineler (Redo).")
+@mcp.tool(description="Redoes the undone operation in the document (Redo).")
 def redo(doc_name: str) -> dict:
     return _safe_call(bridge.redo, doc_name)
 
-@mcp.tool(description="Nesnenin hacim, ağırlık merkezi (Center of Mass) ve atalet momenti (Matrix of Inertia) gibi fiziksel özelliklerini döner.")
+@mcp.tool(description="Returns physical properties of the object such as volume, Center of Mass, and Matrix of Inertia.")
 def get_physical_properties(doc_name: str, object_name: str) -> dict:
     return _safe_call(bridge.get_physical_properties, doc_name, object_name)
 
-@mcp.tool(description="Nesnenin teknik çizimini (TechDraw) oluşturup PDF veya SVG olarak dışa aktarır.")
+@mcp.tool(description="Creates a TechDraw (Blueprint) of the object and exports it as a PDF or SVG.")
 def export_techdraw(doc_name: str, object_name: str, file_path: str) -> dict:
     return _safe_call(bridge.export_techdraw, doc_name, object_name, file_path)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# ARAÇLAR — Bağlantı Testi
+# TOOLS — Connection Test
 # ──────────────────────────────────────────────────────────────────────────────
 
-@mcp.tool(description="FreeCAD RPC sunucusuna bağlantıyı test eder.")
+@mcp.tool(description="Tests the connection to the FreeCAD RPC server.")
 def ping_freecad() -> dict:
-    """FreeCAD bağlantısının canlı olup olmadığını kontrol eder."""
+    """Checks if the FreeCAD connection is alive."""
     alive = bridge.ping()
     if alive:
-        return {"ok": True, "message": "FreeCAD RPC sunucusu çalışıyor."}
+        return {"ok": True, "message": "FreeCAD RPC server is running."}
     return {
         "ok": False,
         "message": (
-            "FreeCAD'e bağlanılamadı. "
-            "FreeCAD'i açın ve 'Macro > Macros' menüsünden "
-            "'freecad_rpc_server.py' makrosunu çalıştırın."
+            "Could not connect to FreeCAD. "
+            "Open FreeCAD and run the 'freecad_rpc_server.py' macro "
+            "from the 'Macro > Macros' menu."
         ),
     }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# KAYNAKLAR (Resources)
+# RESOURCES
 # ──────────────────────────────────────────────────────────────────────────────
 
 @mcp.resource("freecad://documents/{doc_name}/tree")
 def resource_object_tree(doc_name: str) -> str:
-    """Belgedeki tüm nesnelerin hiyerarşik ağacını döner."""
+    """Returns the hierarchical tree of all objects in the document."""
     result = _safe_call(bridge.get_object_tree, doc_name)
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 @mcp.resource("freecad://documents/{doc_name}/objects/{object_name}")
 def resource_object_info(doc_name: str, object_name: str) -> str:
-    """Belirli bir nesnenin tüm özelliklerini ve B-Rep özetini döner."""
+    """Returns all properties and B-Rep summary of a specific object."""
     result = _safe_call(bridge.get_object_info, doc_name, object_name)
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 @mcp.resource("freecad://system/info")
 def resource_system_info() -> str:
-    """FreeCAD versiyon, yüklü modüller ve birim sistemi bilgisini döner."""
+    """Returns FreeCAD version, installed modules, and unit system info."""
     result = _safe_call(bridge.get_system_info)
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 @mcp.resource("freecad://documents/list")
 def resource_document_list() -> str:
-    """Açık tüm belgeleri listeler."""
+    """Lists all open documents."""
     result = _safe_call(bridge.list_documents)
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# İSTEMLER (Prompts)
+# PROMPTS
 # ──────────────────────────────────────────────────────────────────────────────
 
-@mcp.prompt(description="Standart bir M-serisi metrik cıvata oluşturma iş akışı.")
+@mcp.prompt(description="Standard M-series metric bolt creation workflow.")
 def prompt_create_bolt(m_size: int = 5, length_mm: float = 20.0) -> str:
     return f"""
-M{m_size}x{length_mm} metrik cıvata oluştur. Adımlar:
+Create an M{m_size}x{length_mm} metric bolt. Steps:
 
-1. '{m_size}m_bolt' adında yeni bir belge aç.
-2. 'Body' oluştur.
-3. XY düzleminde 'HeadSketch' adlı bir sketch ekle; merkezi (0,0) olan
-   yarıçapı {m_size * 0.9:.1f} mm olan bir altıgen çiz (6 çizgi ile kapalı profil).
-4. HeadSketch'i {m_size * 0.7:.1f} mm pad et → 'BoltHead'.
-5. Yeni bir 'ShankSketch' ekle; merkezi (0,0) yarıçapı {m_size / 2:.2f} mm daire.
-6. ShankSketch'i {length_mm} mm pad et → 'BoltShank'.
-7. BoltHead ve BoltShank'i birleştir.
-8. Üstteki 2 kenara {m_size * 0.05:.2f} mm chamfer uygula.
-9. Sonucu '/tmp/{m_size}m_bolt.FCStd' olarak kaydet.
-10. Ekran görüntüsü al ve doğrula.
+1. Open a new document named '{m_size}m_bolt'.
+2. Create a 'Body'.
+3. Add a sketch named 'HeadSketch' on the XY plane; draw a hexagon
+   with a radius of {m_size * 0.9:.1f} mm centered at (0,0) (closed profile with 6 lines).
+4. Pad HeadSketch by {m_size * 0.7:.1f} mm -> 'BoltHead'.
+5. Add a new 'ShankSketch'; circle centered at (0,0) with a radius of {m_size / 2:.2f} mm.
+6. Pad ShankSketch by {length_mm} mm -> 'BoltShank'.
+7. Union BoltHead and BoltShank.
+8. Apply a {m_size * 0.05:.2f} mm chamfer to the top 2 edges.
+9. Save the result as '/tmp/{m_size}m_bolt.FCStd'.
+10. Take a screenshot and verify.
 """
 
 
-@mcp.prompt(description="Mevcut parçayı FDM 3D baskı için optimize eder.")
+@mcp.prompt(description="Optimizes the existing part for FDM 3D printing.")
 def prompt_optimize_for_3d_print(doc_name: str, object_name: str) -> str:
     return f"""
-'{doc_name}' belgesindeki '{object_name}' nesnesini FDM 3D baskı için optimize et:
+Optimize the '{object_name}' object in the '{doc_name}' document for FDM 3D printing:
 
-1. Önce 'get_object_info' ile nesneyi incele.
-2. 90°'den fazla sarkma (overhang) olan yüzleri tespit et.
-3. Gerekli destek yapılarını en aza indirecek şekilde nesneyi yeniden yönlendir
-   (rotate_object kullan).
-4. Wall thickness'in minimum 1.2 mm (2 perimeter) olduğunu doğrula.
-5. Keskin iç köşelere en az 0.4 mm fillet uygula (printer nozzle çapı).
-6. Görsel doğrulama için ekran görüntüsü al.
-7. Optimize edilmiş versiyonu '/tmp/{doc_name}_3dprint.FCStd' olarak kaydet.
+1. First, inspect the object using 'get_object_info'.
+2. Identify faces with more than 90° overhang.
+3. Reorient the object (using rotate_object) to minimize required support structures.
+4. Verify that wall thickness is at least 1.2 mm (2 perimeters).
+5. Apply at least a 0.4 mm fillet (printer nozzle diameter) to sharp internal corners.
+6. Take a screenshot for visual verification.
+7. Save the optimized version as '/tmp/{doc_name}_3dprint.FCStd'.
 """
 
 
-@mcp.prompt(description="Boş bir belgeyle başlayıp adım adım geometri oluşturmak için genel iş akışı.")
+@mcp.prompt(description="General workflow to build geometry step-by-step starting with an empty document.")
 def prompt_new_part_workflow(part_description: str) -> str:
     return f"""
-Şu parçayı oluştur: {part_description}
+Create the following part: {part_description}
 
-Genel iş akışı:
-1. ping_freecad ile bağlantıyı doğrula.
-2. Anlamlı bir isimle yeni belge oluştur.
-3. Tasarımı küçük adımlara böl: ana gövde → delikler → detaylar.
-4. Her adımdan sonra get_object_tree ile ağacı kontrol et.
-5. Karmaşık geometri için önce Part Workbench (create_box/cylinder),
-   detaylar için Part Design (Body/Sketch/Pad/Pocket) kullan.
-6. Tamamlandığında görsel doğrulama yap (get_view_screenshot).
-7. Belgeyi kaydet.
+General workflow:
+1. Verify connection using ping_freecad.
+2. Create a new document with a meaningful name.
+3. Break the design into small steps: main body -> holes -> details.
+4. Check the tree with get_object_tree after each step.
+5. Use Part Workbench (create_box/cylinder) for complex geometry,
+   and Part Design (Body/Sketch/Pad/Pocket) for details.
+6. Perform visual verification when complete (get_view_screenshot).
+7. Save the document.
 """
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Giriş noktası
+# Entry point
 # ──────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
